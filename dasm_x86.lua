@@ -460,7 +460,7 @@ local function wputszarg(sz, n)
 end
 
 -- Put multi-byte opcode with operand-size dependent modifications.
-local function wputop(sz, op, rex)
+local function wputop(sz, op, rex, mark_rex)
   local r
   if rex ~= 0 and not x64 then werror("bad operand size") end
   if sz == "w" then wputb(102) end
@@ -471,18 +471,25 @@ local function wputop(sz, op, rex)
     if rex ~= 0 then
       local opc3 = band(op, 0xffff00)
       if opc3 == 0x0f3a00 or opc3 == 0x0f3800 then
-	wputb(64 + band(rex, 15)); rex = 0
+         wputb(64 + band(rex, 15)); rex = 0
+         if mark_rex then waction("MARK") end
       end
     end
     wputb(shr(op, 16)); op = band(op, 0xffff)
   end
   if op >= 256 then
     local b = shr(op, 8)
-    if b == 15 and rex ~= 0 then wputb(64 + band(rex, 15)); rex = 0 end
+    if b == 15 and rex ~= 0 then
+       wputb(64 + band(rex, 15)); rex = 0
+       if mark_rex then waction("MARK") end
+    end
     wputb(b)
     op = band(op, 255)
   end
-  if rex ~= 0 then wputb(64 + band(rex, 15)) end
+  if rex ~= 0 then
+     wputb(64 + band(rex, 15))
+     if mark_rex then waction("MARK") end
+  end
   if sz == "b" then op = op - 1 end
   wputb(op)
 end
@@ -1520,7 +1527,7 @@ local function dopattern(pat, args, sz, op, needrex)
       if t.xreg and t.xreg > 7 then rex = rex + 2 end
       if s > 7 then rex = rex + 4 end
       if needrex then rex = rex + 16 end
-      wputop(szov, opcode, rex); opcode = nil
+      wputop(szov, opcode, rex, x64 and (t.vreg or t.vxreg)); opcode = nil -- mark rex if vreg given
       local imark = sub(pat, -1) -- Force a mark (ugly).
       -- Put ModRM/SIB with regno/last digit as spare.
       wputmrmsib(t, imark, s, addin and addin.vreg)
@@ -1530,7 +1537,7 @@ local function dopattern(pat, args, sz, op, needrex)
 	if szov == "q" and rex == 0 then rex = rex + 8 end
 	if needrex then rex = rex + 16 end
 	if addin and addin.reg == -1 then
-	  wputop(szov, opcode - 7, rex)
+	  wputop(szov, opcode - 7, rex, true)
 	  waction("VREG", addin.vreg); wputxb(0)
 	else
 	  if addin and addin.reg > 7 then rex = rex + 1 end
