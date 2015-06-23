@@ -592,7 +592,8 @@ dasm_encode (Dst_DECL, void *buffer)
                           *rex |= ((t < 2) ? 1 : /* rex.b */
                                    (t == 2) ? 4 /* rex.r */ : 2 /* rex.x */);
                       }
-                      rex = NULL;
+                      /* we reuse the same REX byte for multiple operands */
+                      /* rex = NULL; */
                       break;
 		  }
 		case DASM_REL_LG:
