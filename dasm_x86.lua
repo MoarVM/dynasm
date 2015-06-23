@@ -57,7 +57,7 @@ local action_names = {
   -- action arg (1 byte), no buffer pos.
   "ESC",
   -- no action arg, no buffer pos.
-  "MARK",
+  "MARK", "MARKREX",
   -- action arg (1 byte), no buffer pos, terminal action:
   "SECTION",
   -- no args, no buffer pos, terminal action:
@@ -472,7 +472,7 @@ local function wputop(sz, op, rex, mark_rex)
       local opc3 = band(op, 0xffff00)
       if opc3 == 0x0f3a00 or opc3 == 0x0f3800 then
          wputb(64 + band(rex, 15)); rex = 0
-         if mark_rex then waction("MARK") end
+         if mark_rex then waction("MARKREX") end
       end
     end
     wputb(shr(op, 16)); op = band(op, 0xffff)
@@ -481,14 +481,14 @@ local function wputop(sz, op, rex, mark_rex)
     local b = shr(op, 8)
     if b == 15 and rex ~= 0 then
        wputb(64 + band(rex, 15)); rex = 0
-       if mark_rex then waction("MARK") end
+       if mark_rex then waction("MARKREX") end
     end
     wputb(b)
     op = band(op, 255)
   end
   if rex ~= 0 then
      wputb(64 + band(rex, 15))
-     if mark_rex then waction("MARK") end
+     if mark_rex then waction("MARKREX") end
   end
   if sz == "b" then op = op - 1 end
   wputb(op)

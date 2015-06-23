@@ -18,11 +18,11 @@
 /* Action definitions. DASM_STOP must be 255. */
 enum
 {
-  DASM_DISP = 233,
+  DASM_DISP = 232,
   DASM_IMM_S, DASM_IMM_B, DASM_IMM_W, DASM_IMM_D, DASM_IMM_WB, DASM_IMM_DB,
   DASM_VREG, DASM_SPACE, DASM_SETLABEL, DASM_REL_A, DASM_REL_LG, DASM_REL_PC,
   DASM_IMM_LG, DASM_IMM_PC, DASM_LABEL_LG, DASM_LABEL_PC, DASM_ALIGN,
-  DASM_EXTERN, DASM_ESC, DASM_MARK, DASM_SECTION, DASM_STOP
+  DASM_EXTERN, DASM_ESC, DASM_MARK, DASM_MARKREX, DASM_SECTION, DASM_STOP
 };
 
 /* Maximum number of section buffer positions for a single dasm_put() call. */
@@ -252,7 +252,7 @@ dasm_put (Dst_DECL, int start, ...)
 	      b[pos - 2] = -0x40000000;
 	      break;		/* Neg. label ofs. */
 	    case DASM_VREG:
-	      CK ((n & -8) == 0 && (n != 4 || (*p & 1) == 0), RANGE_VREG);
+	      CK ((n & -16) == 0 && (n != 4 || (*p & 1) == 0), RANGE_VREG);
 	      if (*p++ == 1 && *p == DASM_DISP)
 		mrm = n;
 	      continue;
@@ -334,6 +334,8 @@ dasm_put (Dst_DECL, int start, ...)
 	    case DASM_MARK:
 	      mrm = p[-2];
 	      break;
+            case DASM_MARKREX:
+               break;
 	    case DASM_SECTION:
 	      n = *p;
 	      CK (n < D->maxsection, RANGE_SEC);
@@ -470,6 +472,7 @@ dasm_link (Dst_DECL, size_t * szp)
 		  p++;
 		  break;
 		case DASM_MARK:
+                case DASM_MARKREX:
 		  break;
 		case DASM_SECTION:
 		case DASM_STOP:
@@ -516,7 +519,7 @@ dasm_encode (Dst_DECL, void *buffer)
       while (b != endb)
 	{
 	  dasm_ActList p = D->actionlist + *b++;
-	  unsigned char *mark = NULL;
+	  unsigned char *mark = NULL, *rex = NULL;
 	  while (1)
 	    {
 	      int action = *p++;
@@ -575,11 +578,22 @@ dasm_encode (Dst_DECL, void *buffer)
 		  break;
 		case DASM_VREG:
 		  {
-		    int t = *p++;
-		    if (t >= 2)
-		      n <<= 3;
-		    cp[-1] |= n;
-		    break;
+                      int t = *p++; /* flag signifying the role of the address
+                                       0 = ModRM.RM
+                                       1 = SIB.base
+                                       2 = ModRM.reg
+                                       3 = SIB.idx */
+                      int addr = (n & 7); /* only the three LSB go into the address */
+                      if (t >= 2)
+                          addr <<= 3;
+                      cp[-1] |= addr; /* add in the address bits */
+                      if (rex && (n & 8)==8) {
+                          /* printf("Adding bits to rex byte\n"); */
+                          *rex |= ((t < 2) ? 1 : /* rex.b */
+                                   (t == 2) ? 4 /* rex.r */ : 2 /* rex.x */);
+                      }
+                      rex = NULL;
+                      break;
 		  }
 		case DASM_REL_LG:
 		  p++;
@@ -654,6 +668,10 @@ dasm_encode (Dst_DECL, void *buffer)
 		case DASM_MARK:
 		  mark = cp;
 		  break;
+                case DASM_MARKREX:
+                    /* printf("MARKREX: %hhx\n", cp[-1]); */
+                    rex = cp-1;
+                    break;
 		case DASM_ESC:
 		  action = *p++;
 		default:
