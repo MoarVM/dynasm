@@ -57,7 +57,7 @@ local action_names = {
   -- action arg (1 byte), no buffer pos.
   "ESC",
   -- no action arg, no buffer pos.
-  "MARK", "MARKREX",
+  "MARK", "MARKREX", "OPTREX",
   -- action arg (1 byte), no buffer pos, terminal action:
   "SECTION",
   -- no args, no buffer pos, terminal action:
@@ -474,6 +474,8 @@ local function wputop(sz, op, rex, mark_rex)
          wputb(64 + band(rex, 15)); rex = 0
          if mark_rex then waction("MARKREX") end
       end
+    elseif mark_rex then
+       waction("OPTREX")
     end
     wputb(shr(op, 16)); op = band(op, 0xffff)
   end
@@ -482,6 +484,8 @@ local function wputop(sz, op, rex, mark_rex)
     if b == 15 and rex ~= 0 then
        wputb(64 + band(rex, 15)); rex = 0
        if mark_rex then waction("MARKREX") end
+    elseif mark_rex then
+       waction("OPTREX")
     end
     wputb(b)
     op = band(op, 255)
@@ -489,6 +493,8 @@ local function wputop(sz, op, rex, mark_rex)
   if rex ~= 0 then
      wputb(64 + band(rex, 15))
      if mark_rex then waction("MARKREX") end
+  elseif mark_rex then
+     waction("OPTREX")
   end
   if sz == "b" then op = op - 1 end
   wputb(op)
@@ -1541,7 +1547,7 @@ local function dopattern(pat, args, sz, op, needrex)
 	  waction("VREG", addin.vreg); wputxb(0)
 	else
 	  if addin and addin.reg > 7 then rex = rex + 1 end
-	  wputop(szov, opcode, rex)
+	  wputop(szov, opcode, rex, false)
 	end
 	opcode = nil
       end
@@ -1723,7 +1729,7 @@ if x64 then
 	rex = a.reg > 7 and 9 or 8
       end
     end
-    wputop(sz, opcode, rex)
+    wputop(sz, opcode, rex, vreg)
     if vreg then waction("VREG", vreg); wputxb(0) end
     waction("IMM_D", format("(unsigned int)(%s)", op64))
     waction("IMM_D", format("(unsigned int)((%s)>>32)", op64))

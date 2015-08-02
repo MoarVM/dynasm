@@ -18,11 +18,12 @@
 /* Action definitions. DASM_STOP must be 255. */
 enum
 {
-  DASM_DISP = 232,
+  DASM_DISP = 231,
   DASM_IMM_S, DASM_IMM_B, DASM_IMM_W, DASM_IMM_D, DASM_IMM_WB, DASM_IMM_DB,
   DASM_VREG, DASM_SPACE, DASM_SETLABEL, DASM_REL_A, DASM_REL_LG, DASM_REL_PC,
   DASM_IMM_LG, DASM_IMM_PC, DASM_LABEL_LG, DASM_LABEL_PC, DASM_ALIGN,
-  DASM_EXTERN, DASM_ESC, DASM_MARK, DASM_MARKREX, DASM_SECTION, DASM_STOP
+  DASM_EXTERN, DASM_ESC, DASM_MARK, DASM_MARKREX, DASM_OPTREX,
+  DASM_SECTION, DASM_STOP
 };
 
 /* Maximum number of section buffer positions for a single dasm_put() call. */
@@ -336,6 +337,8 @@ dasm_put (Dst_DECL, int start, ...)
 	      break;
             case DASM_MARKREX:
                break;
+            case DASM_OPTREX:
+                break;
 	    case DASM_SECTION:
 	      n = *p;
 	      CK (n < D->maxsection, RANGE_SEC);
@@ -474,6 +477,8 @@ dasm_link (Dst_DECL, size_t * szp)
 		case DASM_MARK:
                 case DASM_MARKREX:
 		  break;
+                case DASM_OPTREX:
+                    break;
 		case DASM_SECTION:
 		case DASM_STOP:
 		  goto stop;
@@ -672,6 +677,8 @@ dasm_encode (Dst_DECL, void *buffer)
                 case DASM_MARKREX:
                     /* printf("MARKREX: %hhx\n", cp[-1]); */
                     rex = cp-1;
+                    break;
+                case DASM_OPTREX:
                     break;
 		case DASM_ESC:
 		  action = *p++;
