@@ -186,7 +186,7 @@ dasm_put (Dst_DECL, int start, ...)
   dasm_State *D = Dst_REF;
   dasm_ActList p = D->actionlist + start;
   dasm_Section *sec = D->section;
-  int pos = sec->pos, ofs = sec->ofs, mrm = 4;
+  int pos = sec->pos, ofs = sec->ofs, mrm = 4, optrex = -1;
   int *b;
 
   if (pos >= sec->epos)
@@ -256,6 +256,8 @@ dasm_put (Dst_DECL, int start, ...)
 	      CK ((n & -16) == 0 && (n != 4 || (*p & 1) == 0), RANGE_VREG);
 	      if (*p++ == 1 && *p == DASM_DISP)
 		mrm = n;
+              if (optrex > 0)
+                  b[optrex] |= n;
 	      continue;
 	    }
 	  mrm = 4;
@@ -336,8 +338,12 @@ dasm_put (Dst_DECL, int start, ...)
 	      mrm = p[-2];
 	      break;
             case DASM_MARKREX:
-               break;
+                optrex = -1;
+                break;
             case DASM_OPTREX:
+                /* Add space for arguments */
+                optrex = pos;
+                b[pos++] = 0;
                 break;
 	    case DASM_SECTION:
 	      n = *p;
@@ -478,6 +484,11 @@ dasm_link (Dst_DECL, size_t * szp)
                 case DASM_MARKREX:
 		  break;
                 case DASM_OPTREX:
+                    if (b[pos] & 8) {
+                        fprintf(stderr, "Take one byte for REX\n");
+                        ofs++;
+                    }
+                    pos++;
                     break;
 		case DASM_SECTION:
 		case DASM_STOP:
@@ -679,6 +690,10 @@ dasm_encode (Dst_DECL, void *buffer)
                     rex = cp-1;
                     break;
                 case DASM_OPTREX:
+                    if (*b & 8) {
+                        rex = cp;
+                        *cp++ = 64;
+                    }
                     break;
 		case DASM_ESC:
 		  action = *p++;

@@ -57,7 +57,9 @@ local action_names = {
   -- action arg (1 byte), no buffer pos.
   "ESC",
   -- no action arg, no buffer pos.
-  "MARK", "MARKREX", "OPTREX",
+  "MARK", "MARKREX",
+  -- no action arg, 1 buffer pos
+  "OPTREX",
   -- action arg (1 byte), no buffer pos, terminal action:
   "SECTION",
   -- no args, no buffer pos, terminal action:
