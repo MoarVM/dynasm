@@ -485,7 +485,6 @@ dasm_link (Dst_DECL, size_t * szp)
 		  break;
                 case DASM_OPTREX:
                     if (b[pos] & 8) {
-                        fprintf(stderr, "Take one byte for REX\n");
                         ofs++;
                     }
                     pos++;
@@ -686,11 +685,10 @@ dasm_encode (Dst_DECL, void *buffer)
 		  mark = cp;
 		  break;
                 case DASM_MARKREX:
-                    /* printf("MARKREX: %hhx\n", cp[-1]); */
                     rex = cp-1;
                     break;
                 case DASM_OPTREX:
-                    if (*b & 8) {
+                    if (*b++ & 8) {
                         rex = cp;
                         *cp++ = 64;
                     }
