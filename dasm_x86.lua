@@ -1519,13 +1519,16 @@ local function dopattern(pat, args, sz, op, needrex)
       addin = args[2]; opcode = opcode + (addin.reg % 8)
       narg = 3
     elseif c == "m" or c == "M" then	-- Encode ModRM/SIB.
-      local s
+      local s, mark_rex = false
       if addin then
 	s = addin.reg
 	opcode = opcode - band(s, 7)	-- Undo regno opcode merge.
       else
 	s = band(opcode, 15)	-- Undo last digit.
 	opcode = shr(opcode, 4)
+      end
+      for i, arg in ipairs(args) do
+         mark_rex = mark_rex or x64 and (arg.vreg or arg.vxreg)
       end
       local nn = c == "m" and 1 or 2
       local t = args[nn]
@@ -1535,7 +1538,7 @@ local function dopattern(pat, args, sz, op, needrex)
       if t.xreg and t.xreg > 7 then rex = rex + 2 end
       if s > 7 then rex = rex + 4 end
       if needrex then rex = rex + 16 end
-      wputop(szov, opcode, rex, x64 and (t.vreg or t.vxreg)); opcode = nil -- mark rex if vreg given
+      wputop(szov, opcode, rex, mark_rex); opcode = nil -- mark rex if vreg given
       local imark = sub(pat, -1) -- Force a mark (ugly).
       -- Put ModRM/SIB with regno/last digit as spare.
       wputmrmsib(t, imark, s, addin and addin.vreg)
