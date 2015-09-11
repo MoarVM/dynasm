@@ -408,6 +408,7 @@ dasm_link (Dst_DECL, size_t * szp)
       while (pos != lastpos)
 	{
 	  dasm_ActList p = D->actionlist + b[pos++];
+         unsigned char *mrm = NULL;
 	  while (1)
 	    {
 	      int op, action = *p++;
@@ -456,11 +457,8 @@ dasm_link (Dst_DECL, size_t * szp)
                         int mod = *p++;
                         /* fprintf(stderr, "VREG: mode = %d, value=%d\n", mod, val); */
                         if ((val & 7) == 4) {
-                            unsigned char b = p[-3];
-                            if (b == DASM_MARK)
-                                b = p[-4];
                             /* fprintf(stderr, "  mrm byte = %x\n", b); */
-                            if (b == 0x80 || b == 0x40)
+                            if (*mrm == 0x80 || *mrm == 0x40)
                                 ofs++;
                         }
                         break;
@@ -495,6 +493,8 @@ dasm_link (Dst_DECL, size_t * szp)
 		  p++;
 		  break;
 		case DASM_MARK:
+                    mrm = (unsigned char*)p-2;
+                    break;
                 case DASM_MARKREX:
 		  break;
                 case DASM_OPTREX:
@@ -613,7 +613,7 @@ dasm_encode (Dst_DECL, void *buffer)
                                        2 = ModRM.reg
                                        3 = SIB.idx */
                       int addr = (n & 7); /* only the three LSB go into the address */
-                      unsigned char byte = cp[-1];
+                      unsigned char byte = cp[-1] & 0xc0;
                       /* RSP/R12 byte encoding is irregular */
                       if (addr == 4 && (byte == 0x40 || byte == 0x80)) {
                           /* fprintf(stderr, "  Should make a SIB byte (addr = %d)\n", addr); */
