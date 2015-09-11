@@ -450,9 +450,23 @@ dasm_link (Dst_DECL, size_t * szp)
 		    pos += 2;
 		    break;
 		  }
+		case DASM_VREG:
+                    {
+                        int val = b[pos++];
+                        int mod = *p++;
+                        /* fprintf(stderr, "VREG: mode = %d, value=%d\n", mod, val); */
+                        if ((val & 7) == 4) {
+                            unsigned char b = p[-3];
+                            if (b == DASM_MARK)
+                                b = p[-4];
+                            /* fprintf(stderr, "  mrm byte = %x\n", b); */
+                            if (b == 0x80 || b == 0x40)
+                                ofs++;
+                        }
+                        break;
+                    }
 		case DASM_SPACE:
 		case DASM_IMM_LG:
-		case DASM_VREG:
 		  p++;
 		case DASM_DISP:
 		case DASM_IMM_S:
@@ -599,16 +613,22 @@ dasm_encode (Dst_DECL, void *buffer)
                                        2 = ModRM.reg
                                        3 = SIB.idx */
                       int addr = (n & 7); /* only the three LSB go into the address */
+                      unsigned char byte = cp[-1];
+                      /* RSP/R12 byte encoding is irregular */
+                      if (addr == 4 && (byte == 0x40 || byte == 0x80)) {
+                          /* fprintf(stderr, "  Should make a SIB byte (addr = %d)\n", addr); */
+                          cp[-1] |= 4;
+                          cp++;
+                          cp[-1]  = 0040;
+                      }
                       if (t >= 2)
                           addr <<= 3;
                       cp[-1] |= addr; /* add in the address bits */
                       if (rex && (n & 8)==8) {
-                          /* printf("Adding bits to rex byte\n"); */
                           *rex |= ((t < 2) ? 1 : /* rex.b */
                                    (t == 2) ? 4 /* rex.r */ : 2 /* rex.x */);
                       }
                       /* we reuse the same REX byte for multiple operands */
-                      /* rex = NULL; */
                       break;
 		  }
 		case DASM_REL_LG:
