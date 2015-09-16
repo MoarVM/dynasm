@@ -519,8 +519,8 @@ local function wputmrmsib(t, imark, s, vsreg)
   -- Register mode.
   if sub(t.mode, 1, 1) == "r" then
     wputmodrm(3, s, reg)
-    if vsreg then waction("VREG", vsreg); wputxb(2) end
-    if vreg then waction("VREG", vreg); wputxb(0) end
+    if vsreg then waction("VREG", vsreg); wputxb(14) end -- 3 << 2 + 2
+    if vreg then waction("VREG", vreg); wputxb(12) end   -- 3 << 2 + 0
     return
   end
 
@@ -528,15 +528,17 @@ local function wputmrmsib(t, imark, s, vsreg)
   local tdisp = type(disp)
   -- No base register?
   if not reg then
+     io.stderr:write("Not reg\n")
     local riprel = false
     if xreg then
+       io.stderr:write("xreg\n")
       -- Indexed mode with index register only.
       -- [xreg*xsc+disp] -> (0, s, esp) (xsc, xreg, ebp)
       wputmodrm(0, s, 4)
       if imark == "I" then waction("MARK") end
-      if vsreg then waction("VREG", vsreg); wputxb(2) end
+      if vsreg then waction("VREG", vsreg); wputxb(2) end -- 0 << 2 + 2
       wputmodrm(t.xsc, xreg, 5)
-      if vxreg then waction("VREG", vxreg); wputxb(3) end
+      if vxreg then waction("VREG", vxreg); wputxb(shl(t.xsc, 2) + 3) end -- t.xsc << 2 + 2
     else
       -- Pure 32 bit displacement.
       if x64 and tdisp ~= "table" then
@@ -548,7 +550,7 @@ local function wputmrmsib(t, imark, s, vsreg)
 	wputmodrm(0, s, 5) -- [disp|rip-label] -> (0, s, ebp)
 	if imark == "I" then waction("MARK") end
       end
-      if vsreg then waction("VREG", vsreg); wputxb(2) end
+      if vsreg then waction("VREG", vsreg); wputxb(2) end -- 0 << 2 + 2
     end
     if riprel then -- Emit rip-relative displacement.
       if match("UWSiI", imark) then
@@ -574,24 +576,28 @@ local function wputmrmsib(t, imark, s, vsreg)
 
   -- Index register present or esp as base register: need SIB encoding.
   if xreg or band(reg, 7) == 4 then
+     io.stderr:write("xreg or band(reg,7) == 4\n")
     wputmodrm(m or 2, s, 4) -- ModRM.
     if m == nil or imark == "I" then waction("MARK") end
-    if vsreg then waction("VREG", vsreg); wputxb(2) end
+    if vsreg then waction("VREG", vsreg); wputxb(shl(m or 2, 2) + 2) end
     wputmodrm(t.xsc or 0, xreg or 4, reg) -- SIB.
-    if vxreg then waction("VREG", vxreg); wputxb(3) end
-    if vreg then waction("VREG", vreg); wputxb(1) end
+    if vxreg then waction("VREG", vxreg); wputxb(shl(t.xsc or 0, 2) + 3) end
+    if vreg then waction("VREG", vreg); wputxb(shl(t.xsc or 2, 2) + 1) end
   else
     wputmodrm(m or 2, s, reg) -- ModRM.
     if (imark == "I" and (m == 1 or m == 2)) or
        (m == nil and (vsreg or vreg)) then waction("MARK") end
-    if vsreg then waction("VREG", vsreg); wputxb(2) end
-    if vreg then waction("VREG", vreg); wputxb(1) end
+    if vsreg then waction("VREG", vsreg); wputxb(shl(m or 2, 2) + 2) end
+    if vreg then waction("VREG", vreg); wputxb(shl(m or 2, 2) + 0) end
   end
 
   -- Put displacement.
   if m == 1 then wputsbarg(disp)
   elseif m == 2 then wputdarg(disp)
-  elseif m == nil then waction("DISP", disp) end
+  elseif m == nil then
+     io.stderr:write("m == nil\n")
+     waction("DISP", disp)
+  end
 end
 
 ------------------------------------------------------------------------------

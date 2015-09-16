@@ -41,6 +41,7 @@ enum
 #define DASM_S_RANGE_VREG	0x15000000
 #define DASM_S_UNDEF_L		0x21000000
 #define DASM_S_UNDEF_PC		0x22000000
+#define DASM_S_RSP_SIB_IDX      0x23000000
 
 /* Macros to convert positions (8 bit section + 24 bit index). */
 #define DASM_POS2IDX(pos)	((pos)&0x00ffffff)
@@ -408,7 +409,6 @@ dasm_link (Dst_DECL, size_t * szp)
       while (pos != lastpos)
 	{
 	  dasm_ActList p = D->actionlist + b[pos++];
-         unsigned char *mrm = NULL;
 	  while (1)
 	    {
 	      int op, action = *p++;
@@ -452,17 +452,18 @@ dasm_link (Dst_DECL, size_t * szp)
 		    break;
 		  }
 		case DASM_VREG:
-                    {
-                        int val = b[pos++];
-                        int mod = *p++;
-                        /* fprintf(stderr, "VREG: mode = %d, value=%d\n", mod, val); */
-                        if ((val & 7) == 4) {
-                            /* fprintf(stderr, "  mrm byte = %x\n", b); */
-                            if (*mrm == 0x80 || *mrm == 0x40)
-                                ofs++;
-                        }
-                        break;
-                    }
+		  {
+		    int val  = b[pos++];
+		    int flag = *p++;
+		    int type = (flag & 3);
+		    int mode = ((flag >> 2) & 3);
+		    fprintf(stderr, "VREG: mode = %d, type = %d, val=%d\n", mode, type, val);
+		    if (mode != 3 && type == 0 && val == 4) {
+		      fprintf(stderr, "  adding offset\n");
+		      ofs++;
+		    }
+		    break;
+		  }
 		case DASM_SPACE:
 		case DASM_IMM_LG:
 		  p++;
@@ -493,16 +494,15 @@ dasm_link (Dst_DECL, size_t * szp)
 		  p++;
 		  break;
 		case DASM_MARK:
-                    mrm = (unsigned char*)p-2;
-                    break;
-                case DASM_MARKREX:
 		  break;
-                case DASM_OPTREX:
-                    if (b[pos] & 8) {
-                        ofs++;
-                    }
-                    pos++;
-                    break;
+		case DASM_MARKREX:
+		  break;
+		case DASM_OPTREX:
+		  if (b[pos] & 8) {
+		    ofs++;
+		  }
+		  pos++;
+		  break;
 		case DASM_SECTION:
 		case DASM_STOP:
 		  goto stop;
@@ -607,29 +607,31 @@ dasm_encode (Dst_DECL, void *buffer)
 		  break;
 		case DASM_VREG:
 		  {
-                      int t = *p++; /* flag signifying the role of the address
-                                       0 = ModRM.RM
-                                       1 = SIB.base
-                                       2 = ModRM.reg
-                                       3 = SIB.idx */
-                      int addr = (n & 7); /* only the three LSB go into the address */
-                      unsigned char byte = cp[-1] & 0xc0;
-                      /* RSP/R12 byte encoding is irregular */
-                      if (addr == 4 && (byte == 0x40 || byte == 0x80)) {
-                          /* fprintf(stderr, "  Should make a SIB byte (addr = %d)\n", addr); */
-                          cp[-1] |= 4;
-                          cp++;
-                          cp[-1]  = 0040;
-                      }
-                      if (t >= 2)
-                          addr <<= 3;
-                      cp[-1] |= addr; /* add in the address bits */
-                      if (rex && (n & 8)==8) {
-                          *rex |= ((t < 2) ? 1 : /* rex.b */
-                                   (t == 2) ? 4 /* rex.r */ : 2 /* rex.x */);
-                      }
-                      /* we reuse the same REX byte for multiple operands */
-                      break;
+		    int flag = *p++;
+		    int type = flag & 3; /* 0 = ModRM.RM, 1 = SIB.base, 2 = ModRM.reg, 3 = SIB.idx */
+		    int mode = (flag >> 2) & 3;
+		    int addr = (n & 7); /* only the three LSB go into the address */
+		    fprintf(stderr, "mode: %d addr %d type %d\n", mode, n, type);
+		    /* RSP/R12 byte encoding is irregular */
+		    if (addr == 4 && mode != 3 && type == 0) {
+		      fprintf(stderr, "Adding in SIB byte\n");
+		      cp[-1] |= 4;
+		      *cp++ = 0x24;
+		    } else if (n == 4 && type == 3) {
+		      fprintf(stderr, "FAIL! cannot encode rsp as SIB.idx\n");
+		      return DASM_S_RSP_SIB_IDX;
+		    } else {
+		      /* Normal happy case */
+		      if (type >= 2)
+			addr <<= 3;
+		      cp[-1] |= addr; /* add in the address bits */
+		    }
+		    if (rex && (n & 8)==8) {
+		      *rex |= ((type < 2) ? 1 : /* rex.b */
+			       (type == 2) ? 4 /* rex.r */ : 2 /* rex.x */);
+		    }
+		    /* we reuse the same REX byte for multiple operands */
+		    break;
 		  }
 		case DASM_REL_LG:
 		  p++;
@@ -727,8 +729,10 @@ dasm_encode (Dst_DECL, void *buffer)
 	}
     }
 
-  if (base + D->codesize != cp)	/* Check for phase errors. */
+  if (base + D->codesize != cp) {	/* Check for phase errors. */
+    fprintf(stderr, "Overshoot of %d bytes\n", cp - (base + D->codesize));
     return DASM_S_PHASE;
+  }
   return DASM_S_OK;
 }
 
