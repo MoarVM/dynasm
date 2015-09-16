@@ -453,9 +453,9 @@ dasm_link (Dst_DECL, size_t * szp)
 		    int type = (flag & 3);
 		    int mode = ((flag >> 2) & 3);
 		    /* fprintf(stderr, "VREG: mode = %d, type = %d, val=%d\n", mode, type, val); */
-		    if (mode != 3 && type == 0 && val == 4) {
+		    if (mode != 3 && type == 0 && (val&7) == 4) {
 		      ofs++;
-		    } else if (val == 5 && (type < 2) && *p == DASM_DISP && b[pos] == 0) {
+		    } else if ((val&7) == 5 && (type < 2) && *p == DASM_DISP && b[pos] == 0) {
 		      /* extra byte is necessary for rbp encoding, which is weird again */
 		      ofs++;
 		    }
