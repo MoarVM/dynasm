@@ -528,10 +528,8 @@ local function wputmrmsib(t, imark, s, vsreg)
   local tdisp = type(disp)
   -- No base register?
   if not reg then
-     io.stderr:write("Not reg\n")
     local riprel = false
     if xreg then
-       io.stderr:write("xreg\n")
       -- Indexed mode with index register only.
       -- [xreg*xsc+disp] -> (0, s, esp) (xsc, xreg, ebp)
       wputmodrm(0, s, 4)
@@ -576,7 +574,6 @@ local function wputmrmsib(t, imark, s, vsreg)
 
   -- Index register present or esp as base register: need SIB encoding.
   if xreg or band(reg, 7) == 4 then
-     io.stderr:write("xreg or band(reg,7) == 4\n")
     wputmodrm(m or 2, s, 4) -- ModRM.
     if m == nil or imark == "I" then waction("MARK") end
     if vsreg then waction("VREG", vsreg); wputxb(shl(m or 2, 2) + 2) end
@@ -595,7 +592,6 @@ local function wputmrmsib(t, imark, s, vsreg)
   if m == 1 then wputsbarg(disp)
   elseif m == 2 then wputdarg(disp)
   elseif m == nil then
-     io.stderr:write("m == nil\n")
      waction("DISP", disp)
   end
 end

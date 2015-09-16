@@ -219,12 +219,7 @@ dasm_put (Dst_DECL, int start, ...)
 	    {
 	    case DASM_DISP:
 	      if (n == 0)
-		{
-		  if ((mrm & 7) == 4)
-		    mrm = p[-2];
-		  if ((mrm & 7) != 5)
-		    break;
-		}
+		break;
 	    case DASM_IMM_DB:
 	      if (((n + 128) & -256) == 0)
 		goto ob;
@@ -255,10 +250,10 @@ dasm_put (Dst_DECL, int start, ...)
 	      break;		/* Neg. label ofs. */
 	    case DASM_VREG:
 	      CK ((n & -16) == 0 && (n != 4 || (*p & 1) == 0), RANGE_VREG);
-	      if (*p++ == 1 && *p == DASM_DISP)
+	      if ((*p++ & 3) == 1 && *p == DASM_DISP)
 		mrm = n;
-              if (optrex > 0)
-                  b[optrex] |= n;
+	      if (optrex > 0)
+		b[optrex] |= n;
 	      continue;
 	    }
 	  mrm = 4;
@@ -338,14 +333,14 @@ dasm_put (Dst_DECL, int start, ...)
 	    case DASM_MARK:
 	      mrm = p[-2];
 	      break;
-            case DASM_MARKREX:
-                optrex = -1;
-                break;
-            case DASM_OPTREX:
-                /* Add space for arguments */
-                optrex = pos;
-                b[pos++] = 0;
-                break;
+	    case DASM_MARKREX:
+	      optrex = -1;
+	      break;
+	    case DASM_OPTREX:
+	      /* Add space for arguments */
+	      optrex = pos;
+	      b[pos++] = 0;
+	      break;
 	    case DASM_SECTION:
 	      n = *p;
 	      CK (n < D->maxsection, RANGE_SEC);
@@ -457,9 +452,11 @@ dasm_link (Dst_DECL, size_t * szp)
 		    int flag = *p++;
 		    int type = (flag & 3);
 		    int mode = ((flag >> 2) & 3);
-		    fprintf(stderr, "VREG: mode = %d, type = %d, val=%d\n", mode, type, val);
+		    /* fprintf(stderr, "VREG: mode = %d, type = %d, val=%d\n", mode, type, val); */
 		    if (mode != 3 && type == 0 && val == 4) {
-		      fprintf(stderr, "  adding offset\n");
+		      ofs++;
+		    } else if (val == 5 && (type < 2) && *p == DASM_DISP && b[pos] == 0) {
+		      /* extra byte is necessary for rbp encoding, which is weird again */
 		      ofs++;
 		    }
 		    break;
@@ -611,14 +608,13 @@ dasm_encode (Dst_DECL, void *buffer)
 		    int type = flag & 3; /* 0 = ModRM.RM, 1 = SIB.base, 2 = ModRM.reg, 3 = SIB.idx */
 		    int mode = (flag >> 2) & 3;
 		    int addr = (n & 7); /* only the three LSB go into the address */
-		    fprintf(stderr, "mode: %d addr %d type %d\n", mode, n, type);
-		    /* RSP/R12 byte encoding is irregular */
+		    /* fprintf(stderr, "mode: %d addr %d type %d\n", mode, n, type); */
 		    if (addr == 4 && mode != 3 && type == 0) {
-		      fprintf(stderr, "Adding in SIB byte\n");
+		      /* RSP/R12 byte encoding is irregular */
 		      cp[-1] |= 4;
 		      *cp++ = 0x24;
 		    } else if (n == 4 && type == 3) {
-		      fprintf(stderr, "FAIL! cannot encode rsp as SIB.idx\n");
+		      /* fprintf(stderr, "FAIL! cannot encode rsp as SIB.idx\n"); */
 		      return DASM_S_RSP_SIB_IDX;
 		    } else {
 		      /* Normal happy case */
@@ -730,7 +726,7 @@ dasm_encode (Dst_DECL, void *buffer)
     }
 
   if (base + D->codesize != cp) {	/* Check for phase errors. */
-    fprintf(stderr, "Overshoot of %d bytes\n", cp - (base + D->codesize));
+    /* fprintf(stderr, "Overshoot of %d bytes\n", cp - (base + D->codesize)); */
     return DASM_S_PHASE;
   }
   return DASM_S_OK;
