@@ -474,7 +474,7 @@ local function wputop(sz, op, rex, mark_rex)
       local opc3 = band(op, 0xffff00)
       if opc3 == 0x0f3a00 or opc3 == 0x0f3800 then
          wputb(64 + band(rex, 15)); rex = 0
-         if mark_rex then waction("MARKREX") end
+         if mark_rex then waction("MARKREX"); mark_rex = false end
       end
     elseif mark_rex then
        waction("OPTREX")
@@ -485,7 +485,7 @@ local function wputop(sz, op, rex, mark_rex)
     local b = shr(op, 8)
     if b == 15 and rex ~= 0 then
        wputb(64 + band(rex, 15)); rex = 0
-       if mark_rex then waction("MARKREX") end
+       if mark_rex then waction("MARKREX"); mark_rex = false end
     elseif mark_rex then
        waction("OPTREX")
     end
