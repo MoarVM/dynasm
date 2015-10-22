@@ -477,7 +477,7 @@ local function wputop(sz, op, rex, mark_rex)
          if mark_rex then waction("MARKREX"); mark_rex = false end
       end
     elseif mark_rex then
-       waction("OPTREX")
+       waction("OPTREX"); mark_rex = false
     end
     wputb(shr(op, 16)); op = band(op, 0xffff)
   end
@@ -487,7 +487,7 @@ local function wputop(sz, op, rex, mark_rex)
        wputb(64 + band(rex, 15)); rex = 0
        if mark_rex then waction("MARKREX"); mark_rex = false end
     elseif mark_rex then
-       waction("OPTREX")
+       waction("OPTREX"); mark_rex = false
     end
     wputb(b)
     op = band(op, 255)
