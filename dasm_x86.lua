@@ -1539,7 +1539,15 @@ local function dopattern(pat, args, sz, op, needrex)
       if t.reg and t.reg > 7 then rex = rex + 1 end
       if t.xreg and t.xreg > 7 then rex = rex + 2 end
       if s > 7 then rex = rex + 4 end
+      if args[1].vreg or args[2].vreg then
+         if t.opsize == "b" then
+            -- vregs with bytes always need a rex to signify that they use full registers
+            -- rather than upper parts of lower registers...
+            rex = rex + 64
+         end
+      end
       if needrex then rex = rex + 16 end
+
       wputop(szov, opcode, rex, mark_rex); opcode = nil -- mark rex if vreg given
       local imark = sub(pat, -1) -- Force a mark (ugly).
       -- Put ModRM/SIB with regno/last digit as spare.
