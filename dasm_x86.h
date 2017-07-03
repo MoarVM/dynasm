@@ -340,6 +340,7 @@ dasm_put (Dst_DECL, int start, ...)
 	      /* Add space for arguments */
 	      optrex = pos;
 	      b[pos++] = 0;
+              ofs++;
 	      break;
 	    case DASM_SECTION:
 	      n = *p;
@@ -495,8 +496,8 @@ dasm_link (Dst_DECL, size_t * szp)
 		case DASM_MARKREX:
 		  break;
 		case DASM_OPTREX:
-		  if (b[pos] & 8) {
-		    ofs++;
+		  if (~b[pos] & 8) {
+                    ofs--; /* ofs should only decrease */
 		  }
 		  pos++;
 		  break;
