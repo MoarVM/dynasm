@@ -254,6 +254,8 @@ dasm_put (Dst_DECL, int start, ...)
 		mrm = n;
 	      if (optrex > 0)
 		b[optrex] |= n;
+              /* we might need an extra byte for RSP/RBP special encoding */
+              ofs++;
 	      continue;
 	    }
 	  mrm = 4;
@@ -453,13 +455,16 @@ dasm_link (Dst_DECL, size_t * szp)
 		    int flag = *p++;
 		    int type = (flag & 3);
 		    int mode = ((flag >> 2) & 3);
+                    int shrink = 1;
 		    /* fprintf(stderr, "VREG: mode = %d, type = %d, val=%d\n", mode, type, val); */
 		    if (mode != 3 && type == 0 && (val&7) == 4) {
-		      ofs++;
+                        shrink = 0;
 		    } else if ((val&7) == 5 && (type < 2) && *p == DASM_DISP && b[pos] == 0) {
 		      /* extra byte is necessary for rbp encoding, which is weird again */
-		      ofs++;
+                        shrink = 0;
 		    }
+                    /* adjust ofs if we don't need the extra byte */
+                    ofs -= shrink;
 		    break;
 		  }
 		case DASM_SPACE:
