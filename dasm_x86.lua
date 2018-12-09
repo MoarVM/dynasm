@@ -470,14 +470,16 @@ local function wputop(sz, op, rex, mark_rex)
   if op >= 4294967296 then r = op%4294967296 wputb((op-r)/4294967296) op = r end
   if op >= 16777216 then wputb(shr(op, 24)); op = band(op, 0xffffff) end
   if op >= 65536 then
-    if rex ~= 0 then
+    if rex ~= 0 or mark_rex then
       local opc3 = band(op, 0xffff00)
       if opc3 == 0x0f3a00 or opc3 == 0x0f3800 then
-         wputb(64 + band(rex, 15)); rex = 0
-         if mark_rex then waction("MARKREX"); mark_rex = false end
+         if rex ~= 0 then
+            wputb(64 + band(rex, 15)); rex = 0
+            if mark_rex then waction("MARKREX"); mark_rex = false end
+         elseif mark_rex then
+            waction("OPTREX"); mark_rex = false
+         end
       end
-    elseif mark_rex then
-       waction("OPTREX"); mark_rex = false
     end
     wputb(shr(op, 16)); op = band(op, 0xffff)
   end
