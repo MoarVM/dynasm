@@ -1,6 +1,3 @@
-Hier ist die komplette, bereinigte `README.md` für das **Dynasm-Interface**, basierend auf den ersten Fundamenten und sauber formatiert für GitHub:
-
-```markdown
 # Dynasm Interface ⚙️
 
 [![Language](https://img.shields.io/badge/language-C%2FPython-blue.svg)]()
@@ -8,59 +5,46 @@ Hier ist die komplette, bereinigte `README.md` für das **Dynasm-Interface**, ba
 [![Status](https://img.shields.io/badge/status-experimental-orange.svg)]()
 
 > **Low-level dynamic code generation and native machine code emission.**  
-> Das Dynasm-Interface schlägt die Brücke zwischen Hochsprachen-Logik und direkter Assembler-Generierung (x86_64 / AArch64) zur Laufzeit – optimiert für performante JIT-Execution und virtuelle Maschinen.
+> The Dynasm Interface bridges high-level logic and direct runtime assembly generation (x86_64 / AArch64)—optimized for high-performance JIT execution and virtual machines.
 
----
 
-## 🏗️ Architektur & Funktionsweise
+## 🏗️ Architecture & How It Works
 
-Das Interface nutzt DynASM-Makros, um Maschinencode direkt in alloziierte, ausführbare Speicherpuffer zu schreiben und zur Laufzeit auszuführen:
+The interface uses DynASM macros to emit machine code directly into allocated, executable memory buffers and run it at runtime:
 
-```mermaid
-graph TD
-    A[Python / Host Control] -->|"Assembler Template (DASM)"| B(DynASM Preprocessor)
-    B -->|"C-Code & Machine Code Buffer"| C[Executable Memory Page]
-    C -->|"Native Execution"| D[(JIT / VM Runtime)]
+    ```mermaid
+    graph TD
+        A[Python / Host Control] -->|"Assembler Template (DASM)"| B(DynASM Preprocessor)
+        B -->|"C-Code & Machine Code Buffer"| C[Executable Memory Page]
+        C -->|"Native Execution"| D[(JIT / VM Runtime)]
 
-```
+💡 Why Dynasm?
+Maximum Performance: Direct execution of low-level code without interpreter overhead.
 
----
+Dynamic Code Emission: Generating optimized function blocks at runtime (e.g., for JIT compilation or emulation acceleration).
 
-## 💡 Warum Dynasm?
+Clean Host Integration: Seamless passing of data structures and function pointers between the host (Python/C) and generated code.
 
-* **Maximale Performance:** Direkte Ausführung von maschinennahem Code ohne Interpreter-Overhead.
-* **Dynamische Code-Emissions:** Generierung von optimierten Funktionsblöcken zur Laufzeit (z. B. für JIT-Kompilierung oder Emulations-Beschleunigung).
-* **Saubere Host-Integration:** Nahtlose Übergabe von Datenstrukturen und Funktionszeigern zwischen Host (Python/C) und generiertem Code.
+🌟 Core Concepts
+1. DASM Macro Pipeline
+.dasm files are passed through the DynASM preprocessor, which generates C source code with embedded machine opcodes.
 
----
+2. Memory Management (Executable Memory)
+Safe handling of memory pages (mprotect / VirtualAlloc) to mark generated buffers as executable.
 
-## 🌟 Kernkonzepte
+3. Function Pointer Binding
+Converting raw memory addresses into directly callable C function pointers (typedef in host code).
 
-### 1. Dasm-Makro-Pipeline
+⚡ Quick Start & Usage
+1. Prerequisites
+A C compiler (GCC / Clang / MSVC)
 
-Die `.dasm`-Dateien werden durch den Dynasm-Preprozessor geleitet, der daraus optimierten C-Quellcode mit eingebetteten Maschinen-Opcodes generiert.
+Lua (required by the DynASM preprocessor)
 
-### 2. Speicherverwaltung (Executable Memory)
+Python 3.10+ (for control and bindings, if integrated)
 
-Sicherer Umgang mit Speicherseiten (`mprotect` / `VirtualAlloc`), um generierte Puffer als ausführbar zu kennzeichnen.
-
-### 3. Funktionszeiger-Binding
-
-Konvertierung der rohen Speicheradresse in einen direkt aufrufbaren C-Funktionszeiger (`typedef` im Host-Code).
-
----
-
-## ⚡ Schnellstart & Verwendung
-
-### 1. Voraussetzungen
-
-* Ein C-Compiler (GCC / Clang / MSVC)
-* Lua (wird vom Dynasm-Preprozessor benötigt)
-* Python 3.10+ (für die Steuerung und das Binding, falls angebunden)
-
-### 2. Beispiel-Struktur einer Dynasm-Routine (`jit_engine.dasm`)
-
-```c
+2. Example Structure of a Dynasm Routine (jit_engine.dasm)
+C
 |.arch x64
 |.actionlist actions
 
@@ -68,7 +52,7 @@ void* generate_code(size_t *codesize) {
     dasm_State *dState;
     -| initialize_dasm(&dState, actions);
 
-    // Beispiel: Einfache x86_64 Funktion (gibt z.B. 42 zurück)
+    // Example: Simple x86_64 function (returns e.g. 42)
     |.if x64
         | mov rax, 42
         | ret
@@ -82,20 +66,8 @@ void* generate_code(size_t *codesize) {
     return buf;
 }
 
-```
+🛠️ Contributing & Integration
+This interface serves as a high-performance building block for low-level emulations and code-generation pipelines. PRs adding AArch64 macros or optimized memory allocators are always welcome!
 
----
-
-## 🛠️ Mitwirken & Integration
-
-Dieses Interface dient als High-Performance-Baustein für hardwarenahe Emulationen und Code-Generierungs-Pipelines. PRs zur Erweiterung um AArch64-Makros oder optimierte Speicher-Allocators sind jederzeit willkommen!
-
-## 📄 Lizenz
-
-Veröffentlicht unter der [MIT License](https://www.google.com/search?q=LICENSE).
-
-```
-
-<FollowUp label="Möchtest du, dass ich dir als nächsten Schritt den passenden C-Code für die Initialisierung des ausführbaren Dynasm-Speicherpuffers schreibe?" query="Erstelle mir den C-Code für die Initialisierung des ausführbaren Dynasm-Speicherpuffers."/>
-
-```
+📄 License
+Released under the MIT License.
